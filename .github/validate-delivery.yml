@@ -1,0 +1,65 @@
+name: Validate Delivery
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Get changed files
+        id: files
+        run: |
+          echo "FILES=$(git diff --name-only origin/main)" >> $GITHUB_OUTPUT
+
+      - name: Validate file structure
+        run: |
+          echo "Changed files:"
+          echo "${{ steps.files.outputs.FILES }}"
+
+          FILE_COUNT=$(echo "${{ steps.files.outputs.FILES }}" | wc -l)
+
+          # Mais de 1 arquivo modificado
+          if [ "$FILE_COUNT" -gt 1 ]; then
+            echo "Only ONE file per delivery is allowed"
+            exit 1
+          fi
+
+          FILE=$(echo "${{ steps.files.outputs.FILES }}")
+
+          # Fora da pasta students
+          if [[ "$FILE" != students/* ]]; then
+            echo "File must be inside students/ folder"
+            exit 1
+          fi
+
+          # Nome errado
+          if [[ "$FILE" != *delivery1.md && "$FILE" != *delivery2.md && "$FILE" != *delivery3.md && "$FILE" != *delivery4.md && "$FILE" != *delivery5.md ]]; then
+            echo "Invalid file name"
+            exit 1
+          fi
+
+          echo "Structure OK"
+
+      - name: Validate content
+        run: |
+          FILE=$(git diff --name-only origin/main)
+
+          # Arquivo vazio
+          if [ ! -s "$FILE" ]; then
+            echo "File is empty"
+            exit 1
+          fi
+
+          # Placeholder não preenchido
+          if grep -q "Name:" "$FILE"; then
+            echo "Student info not filled"
+            exit 1
+          fi
+
+          echo "Content OK"
